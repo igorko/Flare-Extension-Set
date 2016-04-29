@@ -812,7 +812,7 @@ intermap=""" + str( self.data["mods"][self.actual_mod]["maps"][self.data["mods"]
         dia.set_position( gtk.WIN_POS_CENTER_ALWAYS )
         dia.connect( "delete_event", lambda w, d: True )
         image = gtk.Image()
-        image.set_from_file( FLARE_DIR + "mods/fantasycore/images/menus/logo.png" )
+        image.set_from_file( self.logofile )
         dia.vbox.pack_start( image, False, False )
         dia.vbox.pack_start( gtk.Label( text ), False, False, 10 )
         dia.show_all()
@@ -1003,7 +1003,7 @@ msgstr ""
     def level_create( self, widget=None ):
 
         # Prepare data files
-        level_data = { "name": "unknown", "dir": WORK_DIR, "spawnpoint": [ 8, 8, 7 ], "width": 16, "height": 16, "music": "music/overworld_theme.ogg", "tileset": "tilesetdefs/tileset_grassland.txt", "title": "Unknown", "enemies": {}, "events": {} }
+        level_data = { "name": "unknown", "dir": WORK_DIR, "spawnpoint": [ 8, 8, 7 ], "width": 16, "height": 16, "music": "music/overworld_theme.ogg", "tileset": self.default_tileset, "title": "Unknown", "enemies": {}, "events": {} }
         quest_data = { "name": "unnamed", "actual_map": 0, "maps": [], "items": [], "quests": {} }
 
         # Dialog window
@@ -1054,7 +1054,9 @@ msgstr ""
         box2 = gtk.HBox( False, 4 )
         box2.pack_start( gtk.Label( "Music:" ), False, False, 4 )
         list_music = gtk.combo_box_new_text()
-        for x in [f for f in os.listdir( WORK_DIR + "mods/fantasycore/music" ) if f.split( "." )[-1] == "ogg"]: list_music.append_text( "music/" + x )
+        for mod in self.data["mods"]:
+            if os.path.isdir( WORK_DIR + "mods/" + mod["name"] + "/music" ):
+                for x in [f for f in os.listdir( WORK_DIR + "mods/" + mod["name"] + "/music" ) if f.split( "." )[-1] == "ogg"]: list_music.append_text( "music/" + x )
         for x in range( len( list_music.get_model() ) ):
             if list_music.get_model()[x][0] == level_data["music"]: list_music.set_active( x )
         box2.pack_start( list_music, True, True, 4 )
@@ -1064,7 +1066,9 @@ msgstr ""
         box2 = gtk.HBox( False, 4 )
         box2.pack_start( gtk.Label( "Tileset:" ), False, False, 4 )
         list_tiles = gtk.combo_box_new_text()
-        for x in [f for f in os.listdir( WORK_DIR + "mods/fantasycore/tilesetdefs" ) if f.split( "." )[-1] == "txt"]: list_tiles.append_text( "tilesetdefs/" + x )
+        for mod in self.data["mods"]:
+            if os.path.isdir( WORK_DIR + "mods/" + mod["name"] + "/tilesetdefs" ):
+                for x in [f for f in os.listdir( WORK_DIR + "mods/" + mod["name"] + "/tilesetdefs" ) if f.split( "." )[-1] == "txt"]: list_tiles.append_text( "tilesetdefs/" + x )
         for x in range( len( list_tiles.get_model() ) ):
             if list_tiles.get_model()[x][0] == level_data["tileset"]: list_tiles.set_active( x )
         box2.pack_start( list_tiles, True, True, 4 )
@@ -1095,7 +1099,7 @@ msgstr ""
                 for filename in ( "enemies", "images", "items", "languages", "maps", "npcs", "quests" ):
                     if not os.path.exists( WORK_DIR + "mods/" + quest_data["name"] + "/" + filename ): os.makedirs( WORK_DIR + "mods/" + quest_data["name"] + "/" + filename )
                 self.data["mods"].append( quest_data )
-                open( WORK_DIR + "mods/mods.txt", 'a' ).write( quest_data["name"] + "\n" )
+                open( WORK_DIR + "mods/mods.txt", 'a' ).write( "\n" + quest_data["name"] + "\n" )
                 self.mod_list.append_text( quest_data["name"] )
 
             # Change cache
@@ -1231,6 +1235,13 @@ msgstr ""
             if quest not in [x["name"] for x in self.data["mods"]]: self.data["mods"].append( { "name": quest, "actual_map": 0, "maps": [], "items": [], "quests": {} } )
         print( "Found mods: %s" % str( [x["name"] for x in reversed( self.data["mods"] )] ) )
 
+        # Find game icon
+        for x in reversed( self.data["mods"] ):
+            modname = x["name"]
+            if os.path.isfile( FLARE_DIR + "mods/" + modname + "/images/logo/icon.png" ):
+                self.logofile = FLARE_DIR + "mods/" + modname + "/images/logo/icon.png"
+                break
+
         # Read TILESET data
         for quest in [x["name"] for x in reversed( self.data["mods"] )]:
             if os.path.isdir( WORK_DIR + "mods/" + quest + "/tilesetdefs" ):
@@ -1255,9 +1266,17 @@ msgstr ""
                     tileset = "tilesetdefs/" + tileset
                     self.data["tiles"][tileset] = {}
                     if not pixbuf.get_has_alpha(): pixbuf = pixbuf.add_alpha( True, 255, 0, 255 )
-                    self.data["tiles"][tileset][0] = [ gtk.gdk.pixbuf_new_from_file( FLARE_DIR + "mods/fantasycore/images/logo/icon.png" ), 0, 0, 3 ]
+                    self.data["tiles"][tileset][0] = [ gtk.gdk.pixbuf_new_from_file( self.logofile ), 0, 0, 3 ]
                     for tile in [x.rstrip()[5:].split(",") for x in filedata if x[:5] == "tile="]:
                         self.data["tiles"][tileset][int( tile[0] )] = [ pixbuf.subpixbuf( int( tile[1] ), int( tile[2] ), int( tile[3] ), int( tile[4] ) ), int( tile[5] ), int( tile[6] ), -1 ]
+
+        for x in self.data["tiles"]:
+            self.default_tileset = x
+            break
+
+        for x in self.data["mods"]:
+            self.default_mod = x["name"]
+            break
 
         # Load ENEMIES
         for quest in [x["name"] for x in reversed( self.data["mods"] )]:
@@ -1270,7 +1289,7 @@ msgstr ""
                     pb.set_text( "Load unit: %s ..." % unit )
                     pb.pulse()
                     while gtk.events_pending(): gtk.main_iteration( False )
-                    enemy = { "readonly": quest == 'fantasycore', "file": "mods/" + quest + "/enemies/" + unit + ".txt", "quest": quest, "cache": quest + "." + unit, "level": "?", "hp": "?" }
+                    enemy = { "readonly": quest == self.default_mod, "file": "mods/" + quest + "/enemies/" + unit + ".txt", "quest": quest, "cache": quest + "." + unit, "level": "?", "hp": "?" }
                     for line in [x.strip() for x in open( WORK_DIR + enemy["file"], 'r' ).readlines() if x.strip() and x[:1] != "#"]:
                         if "=" in line: enemy[line.split( "=", 1 )[0]] = line.split( "=", 1 )[1]
                     if enemy['cache'] not in self.data["pictures"]:
@@ -1333,7 +1352,7 @@ msgstr ""
                         print( "(%s) ... %s (already stored)" % ( quest, name ) )
                         continue
                     print( "(%s) ... %s" % ( quest, name ) )
-                    self.data["mods"][quest_id]["maps"].append( { "changed": False, "dir": WORK_DIR, "name": name, "background": [], "object": [], "collision": [], "events": {}, "enemies": {}, "file": "mods/" + quest + "/maps/" + name, "tileset": "tilesetdefs/tileset_grassland.txt" } )
+                    self.data["mods"][quest_id]["maps"].append( { "changed": False, "dir": WORK_DIR, "name": name, "background": [], "object": [], "collision": [], "events": {}, "enemies": {}, "file": "mods/" + quest + "/maps/" + name, "tileset": self.default_tileset } )
                     pb.set_text( "Load map: " + name + " ..." )
                     pb.pulse()
                     while gtk.events_pending(): gtk.main_iteration( False )
@@ -1418,7 +1437,7 @@ msgstr ""
         self.window.maximize()
         self.window.connect( "delete_event", self.delete_event )
         self.window.connect( "destroy", lambda w: gtk.main_quit() )
-        try: self.window.set_icon_from_file( FLARE_DIR + "mods/fantasycore/images/logo/icon.png" )
+        try: self.window.set_icon_from_file( self.logofile )
         except: pass
         self.window.set_position( gtk.WIN_POS_CENTER_ALWAYS )
         self.window.set_sensitive( False )
@@ -1451,21 +1470,21 @@ msgstr ""
 
         # Mod selector
         fbox = gtk.VBox( False, 2 )
-        frame = gtk.Frame( " Modul " )
+        frame = gtk.Frame( " Mod " )
         frame.add( fbox )
         tbox = gtk.HBox( False, 2 )
         #tbox.pack_start( gtk.Label( "Mod:" ), False, False, 2 )
         rightbox.pack_start( frame, False, False, 2 )
         self.mod_list = gtk.combo_box_new_text()
         for x in self.data["mods"]:
-            if x["name"][-4:] != "core": self.mod_list.append_text( x["name"] )
+            if x["name"] != "default": self.mod_list.append_text( x["name"] )
         tbox.pack_start( self.mod_list, True, True, 2 )
         fbox.pack_start( tbox, False, False, 2 )
         tbox = gtk.HBox( False, 2 )
-        button = gtk.Button( "_New" )
+        button = gtk.Button( "_New Map" )
         button.connect( "clicked", self.level_create )
         tbox.pack_start( button, True, True, 2 )
-        button = gtk.Button( "_Save" )
+        button = gtk.Button( "_Save Map" )
         button.connect( "clicked", self.level_save )
         tbox.pack_start( button, True, True, 2 )
         button = gtk.Button( "_Exit" )
