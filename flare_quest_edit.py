@@ -85,9 +85,10 @@ FLARE_DIR = "./"
 print( "Looking for Flare data directories..." )
 for testdir in [td.rstrip( "/" ) + "/flare/" for td in os.getenv( 'XDG_DATA_DIRS', "" ).split( ":" ) if td.strip()] + [
     "/usr/local/share/flare/",
-    "/usr/share/flare/",
     "/usr/local/share/games/flare/",
+    "/usr/share/flare/",
     "/usr/share/games/flare/",
+    "/usr/share/games/flare/flare-game/",
     "./flare/",
     "./"
 ]:
